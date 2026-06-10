@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI × 碳管理 刷題庫</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --text: #e8eaf0;
+    --muted: #7b82a0;
+    --accent: #6c63ff;
+    --accent-light: #8b84ff;
+    --green: #22c55e;
+    --green-bg: rgba(34,197,94,0.12);
+    --red: #ef4444;
+    --red-bg: rgba(239,68,68,0.12);
+    --yellow: #f59e0b;
+    --tag-ai: #6c63ff;
+    --tag-carbon: #f59e0b;
+    --tag-prompt: #22c55e;
+    --tag-data: #06b6d4;
+    --tag-iso: #f97316;
+    --tag-tcfd: #ec4899;
+  }
+
+  body {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+  }
+  .logo { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
+  .logo span { color: var(--accent-light); }
+  .header-stats { display: flex; gap: 1.5rem; }
+  .hstat { text-align: right; }
+  .hstat-val { font-size: 1.4rem; font-weight: 700; }
+  .hstat-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* ── Main layout ── */
+  .app { display: flex; flex: 1; }
+
+  /* ── Sidebar ── */
+  aside {
+    width: 260px;
+    min-width: 260px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 1.25rem 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .sidebar-section { padding: 0.4rem 1.25rem 0.2rem; font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-top: 0.75rem; }
+  .sidebar-btn {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.55rem 1.25rem;
+    cursor: pointer; font-size: 0.82rem; color: var(--muted);
+    border: none; background: none; width: 100%; text-align: left;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .sidebar-btn:hover { background: var(--surface2); color: var(--text); }
+  .sidebar-btn.active { background: var(--surface2); color: var(--text); }
+  .sidebar-btn.active::before {
+    content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+    width: 3px; background: var(--accent); border-radius: 0 2px 2px 0;
+  }
+  .sb-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .sb-count { margin-left: auto; font-size: 0.72rem; background: var(--surface2); padding: 1px 7px; border-radius: 10px; }
+  .sidebar-btn.active .sb-count { background: var(--accent); color: white; }
+
+  .filter-row { padding: 0.75rem 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; border-bottom: 1px solid var(--border); }
+  .filter-row label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .filter-row select {
+    background: var(--surface2); border: 1px solid var(--border2); color: var(--text);
+    padding: 0.4rem 0.6rem; border-radius: 6px; font-size: 0.82rem; width: 100%;
+  }
+  .shuffle-btn {
+    margin: 0.75rem 1.25rem 0;
+    padding: 0.55rem; border-radius: 8px;
+    background: var(--accent); color: white; border: none;
+    font-size: 0.82rem; font-weight: 600; cursor: pointer; letter-spacing: 0.02em;
+    transition: opacity 0.15s;
+  }
+  .shuffle-btn:hover { opacity: 0.85; }
+
+  /* ── Content ── */
+  main { flex: 1; padding: 2rem; max-width: 760px; overflow-y: auto; }
+
+  /* ── Question card ── */
+  .q-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
+  .q-num { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
+  .q-tag {
+    font-size: 0.65rem; padding: 2px 10px; border-radius: 20px;
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .q-progress { margin-left: auto; font-size: 0.75rem; color: var(--muted); }
+
+  .q-text {
+    font-size: 1.15rem; font-weight: 500; line-height: 1.6;
+    margin-bottom: 2rem; color: var(--text);
+  }
+
+  .options { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2rem; }
+  .option-btn {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0.9rem 1.25rem; border-radius: 10px;
+    border: 1px solid var(--border2); background: var(--surface);
+    color: var(--text); cursor: pointer; font-size: 0.92rem;
+    text-align: left; transition: all 0.15s; width: 100%;
+  }
+  .option-btn:hover:not(:disabled) { border-color: var(--accent); background: var(--surface2); }
+  .option-letter {
+    width: 28px; height: 28px; border-radius: 6px; background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700; flex-shrink: 0; color: var(--muted);
+    transition: all 0.15s;
+  }
+  .option-btn.correct { border-color: var(--green); background: var(--green-bg); }
+  .option-btn.correct .option-letter { background: var(--green); color: white; }
+  .option-btn.wrong { border-color: var(--red); background: var(--red-bg); }
+  .option-btn.wrong .option-letter { background: var(--red); color: white; }
+  .option-btn.reveal { border-color: var(--border2); opacity: 0.5; }
+  .option-btn:disabled { cursor: default; }
+
+  .feedback {
+    padding: 1rem 1.25rem; border-radius: 10px;
+    font-size: 0.9rem; line-height: 1.6; margin-bottom: 1.5rem; display: none;
+  }
+  .feedback.correct { background: var(--green-bg); border: 1px solid rgba(34,197,94,0.3); color: #86efac; }
+  .feedback.wrong { background: var(--red-bg); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+  .feedback-title { font-weight: 700; margin-bottom: 0.25rem; }
+
+  .nav-row { display: flex; gap: 0.75rem; align-items: center; }
+  .nav-btn {
+    padding: 0.6rem 1.5rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; border: 1px solid var(--border2);
+    background: var(--surface); color: var(--text);
+  }
+  .nav-btn:hover { background: var(--surface2); }
+  .nav-btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+  .nav-btn.primary:hover { opacity: 0.85; }
+  .nav-btn:disabled { opacity: 0.4; cursor: default; }
+  .skip-btn { margin-left: auto; font-size: 0.8rem; color: var(--muted); cursor: pointer; background: none; border: none; }
+  .skip-btn:hover { color: var(--text); }
+
+  /* ── Result screen ── */
+  .result-screen {
+    display: none; flex-direction: column; align-items: center;
+    justify-content: center; min-height: 60vh; gap: 2rem; text-align: center;
+  }
+  .result-circle {
+    width: 120px; height: 120px; border-radius: 50%;
+    border: 4px solid var(--accent); display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .result-score { font-size: 2.5rem; font-weight: 800; }
+  .result-label { font-size: 0.75rem; color: var(--muted); }
+  .result-title { font-size: 1.6rem; font-weight: 700; }
+  .result-sub { color: var(--muted); font-size: 0.9rem; }
+
+  /* ── Progress bar ── */
+  .progress-bar-wrap { height: 3px; background: var(--border); margin-bottom: 2rem; border-radius: 2px; }
+  .progress-bar { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+
+  /* ── Tags colors ── */
+  .tag-ai { background: rgba(108,99,255,0.2); color: #a5a0ff; }
+  .tag-carbon { background: rgba(245,158,11,0.2); color: #fcd34d; }
+  .tag-prompt { background: rgba(34,197,94,0.2); color: #86efac; }
+  .tag-data { background: rgba(6,182,212,0.2); color: #67e8f9; }
+  .tag-iso { background: rgba(249,115,22,0.2); color: #fdba74; }
+  .tag-tcfd { background: rgba(236,72,153,0.2); color: #f9a8d4; }
+
+  /* ── Mobile ── */
+  @media (max-width: 700px) {
+    aside { display: none; }
+    main { padding: 1.25rem; }
+    .q-text { font-size: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">AI × 碳管理 <span>刷題庫</span></div>
+  <div class="header-stats">
+    <div class="hstat">
+      <div class="hstat-val" id="stat-correct">0</div>
+      <div class="hstat-label">答對</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-val" id="stat-streak">0</div>
+      <div class="hstat-label">連勝</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-val" id="stat-total">0</div>
+      <div class="hstat-label">已答</div>
+    </div>
+  </div>
+</header>
+
+<div class="app">
+  <aside>
+    <div class="filter-row">
+      <label>出題模式</label>
+      <select id="mode-select">
+        <option value="all">全部題目</option>
+        <option value="wrong">只刷錯題</option>
+        <option value="unseen">只刷未見題</option>
+      </select>
+    </div>
+    <button class="shuffle-btn" onclick="startQuiz()">🔀 重新出題</button>
+
+    <div class="sidebar-section">分類</div>
+    <button class="sidebar-btn active" data-cat="all" onclick="filterCat('all')">
+      <span class="sb-dot" style="background:#6c63ff"></span> 全部題目
+      <span class="sb-count" id="cnt-all">50</span>
+    </button>
+    <button class="sidebar-btn" data-cat="ai" onclick="filterCat('ai')">
+      <span class="sb-dot" style="background:#a5a0ff"></span> AI 概念
+      <span class="sb-count" id="cnt-ai"></span>
+    </button>
+    <button class="sidebar-btn" data-cat="prompt" onclick="filterCat('prompt')">
+      <span class="sb-dot" style="background:#86efac"></span> Prompt Engineering
+      <span class="sb-count" id="cnt-prompt"></span>
+    </button>
+    <button class="sidebar-btn" data-cat="data" onclick="filterCat('data')">
+      <span class="sb-dot" style="background:#67e8f9"></span> 資料與 AI 技術
+      <span class="sb-count" id="cnt-data"></span>
+    </button>
+    <button class="sidebar-btn" data-cat="carbon" onclick="filterCat('carbon')">
+      <span class="sb-dot" style="background:#fcd34d"></span> 碳盤查與碳排放
+      <span class="sb-count" id="cnt-carbon"></span>
+    </button>
+    <button class="sidebar-btn" data-cat="tcfd" onclick="filterCat('tcfd')">
+      <span class="sb-dot" style="background:#f9a8d4"></span> TCFD / CBAM
+      <span class="sb-count" id="cnt-tcfd"></span>
+    </button>
+    <button class="sidebar-btn" data-cat="iso" onclick="filterCat('iso')">
+      <span class="sb-dot" style="background:#fdba74"></span> ISO 盤查 / 查驗
+      <span class="sb-count" id="cnt-iso"></span>
+    </button>
+  </aside>
+
+  <main>
+    <div id="quiz-screen">
+      <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+      <div class="q-header">
+        <span class="q-num" id="q-num">題目 1</span>
+        <span class="q-tag" id="q-tag"></span>
+        <span class="q-progress" id="q-progress"></span>
+      </div>
+      <div class="q-text" id="q-text"></div>
+      <div class="options" id="options"></div>
+      <div class="feedback" id="feedback">
+        <div class="feedback-title" id="fb-title"></div>
+        <div id="fb-body"></div>
+      </div>
+      <div class="nav-row">
+        <button class="nav-btn" id="prev-btn" onclick="goPrev()">← 上一題</button>
+        <button class="nav-btn primary" id="next-btn" onclick="goNext()" style="display:none">下一題 →</button>
+        <button class="skip-btn" id="skip-btn" onclick="skipQ()">跳過</button>
+      </div>
+    </div>
+
+    <div class="result-screen" id="result-screen">
+      <div class="result-circle">
+        <div class="result-score" id="res-score"></div>
+        <div class="result-label">分數</div>
+      </div>
+      <div>
+        <div class="result-title" id="res-title"></div>
+        <div class="result-sub" id="res-sub"></div>
+      </div>
+      <div style="display:flex;gap:0.75rem">
+        <button class="nav-btn primary" onclick="startQuiz()">再來一輪 🔀</button>
+        <button class="nav-btn" onclick="reviewWrong()">複習錯題</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const ALL_QUESTIONS = [
+  // AI 概念
+  { id:1, cat:'ai', q:'AI 技術中，哪一種模型像是一個「生成器」，能夠無中生有地寫文章或畫圖？',
+    opts:['鑑別式 AI','生成式 AI (Generative AI)','傳統資料庫','隨身碟'], ans:1,
+    explain:'生成式 AI 能夠從學習到的資料中「創造」新內容，例如 ChatGPT 寫文章、Midjourney 畫圖。' },
+  { id:2, cat:'ai', q:'當大語言模型 (LLM) 不懂裝懂，自己編造出看似合理但其實是假的資訊時，這種現象叫什麼？',
+    opts:['系統更新','機器學習','幻覺 (Hallucination)','雲端備份'], ans:2,
+    explain:'Hallucination（幻覺）是指 AI 以高度自信的語氣說出錯誤或捏造的資訊，這是 LLM 目前的主要風險之一。' },
+  { id:3, cat:'ai', q:'為了防止 AI 胡說八道，企業會把真實的法規檔案餵給 AI 讓它「先搜尋再回答」，這套技術簡稱什麼？',
+    opts:['RAG (檢索增強生成)','GPS (全球定位)','USB (通用序列匯流排)','PDF (可攜式文件)'], ans:0,
+    explain:'RAG（Retrieval-Augmented Generation）讓 AI 先從企業自有知識庫搜尋相關段落，再根據這些段落生成回答，大幅降低幻覺。' },
+  { id:4, cat:'ai', q:'AI 有時候會為了討好人類而給出錯誤承諾，因此企業對外發布重要文件時，最後一關一定要由誰來把關？',
+    opts:['另一個 AI','人類 (Human-in-the-loop)','外星人','電腦病毒'], ans:1,
+    explain:'Human-in-the-loop（人類在迴路中）是 Responsible AI 的核心原則——最終決策與審查必須由人類負責。' },
+  { id:5, cat:'ai', q:'用 AI 幫忙做決策時，除了考慮幫公司賺錢，也要考慮會不會害員工失業或危害社區，這稱為什麼概念？',
+    opts:['負責任 AI (Responsible AI)','賺錢機器','傳統統計學','虛擬實境'], ans:0,
+    explain:'Responsible AI 要求 AI 的設計和應用必須考量公平性、透明度、安全性，以及對社會的整體影響。' },
+  { id:6, cat:'ai', q:'現代的 AI 不只會讀文字，還能同時看圖、聽聲音，這種超強的 AI 統稱為什麼？',
+    opts:['單一 AI','傳統 AI','多模態 AI (Multimodal AI)','計算機'], ans:2,
+    explain:'多模態 AI 能同時處理文字、圖像、聲音、影片等多種輸入格式，例如 GPT-4V 可以看圖回答問題。' },
+  { id:7, cat:'ai', q:'面對每年都在變的氣候法規，我們為什麼推薦用 RAG 架構，而不是重新微調 (Fine-tuning) AI 模型？',
+    opts:['因為 RAG 名字比較好聽','因為 RAG 只要上傳新 PDF 就能馬上更新知識，成本低又快','因為 RAG 不用插電','因為微調不用錢'], ans:1,
+    explain:'Fine-tuning 需要重新訓練模型，成本高且耗時。RAG 只需更新知識庫文件，幾乎即時生效，非常適合法規頻繁更動的場景。' },
+  { id:8, cat:'ai', q:'在 AI 領域，區分一張照片是「貓」還是「狗」，或者區分一筆帳單是「範疇一」還是「範疇二」，這是哪種 AI 最擅長的事？',
+    opts:['鑑別式 AI','音響','螢幕','滑鼠'], ans:0,
+    explain:'鑑別式 AI（Discriminative AI）專門用於分類和判斷，例如影像分類、文字分類、情感分析等任務。' },
+  { id:9, cat:'ai', q:'使用 NotebookLM 時，系統在回答的文字後面會附上「[1], [2]」的小標籤，點擊可以連回原始 PDF 檔，這叫什麼功能？',
+    opts:['遊戲代碼','引用標籤 (Citations)','亂數表','網址列'], ans:1,
+    explain:'Citations（引用標籤）讓使用者可以追蹤 AI 的資訊來源，提高可信度並方便驗證。' },
+  { id:10, cat:'ai', q:'上完這門實戰營，現代「綠領人才」最核心的競爭力是什麼？',
+    opts:['把所有法規條文一字不漏地死背下來','拒絕使用電腦','學會利用 AI 工具處理資料，並用人類的智慧去監管 AI 的結果','每天加班算數學'], ans:2,
+    explain:'綠領人才需要具備 AI 工具素養，但更重要的是保有人類的判斷力，能夠發現並修正 AI 的錯誤。' },
+
+  // Prompt Engineering
+  { id:11, cat:'prompt', q:'在提示工程 (Prompt Engineering) 中，我們常會叫 AI「請扮演一位有 10 年經驗的法規遵循長」，這屬於 CTF 框架中的哪一個步驟？',
+    opts:['T (任務)','C/R (上下文或角色設定)','F (格式)','S (儲存)'], ans:1,
+    explain:'CTF 框架中，C/R 代表 Context/Role（上下文/角色），給 AI 設定一個專業身分，能讓回答更精準、符合該領域語氣。' },
+  { id:12, cat:'prompt', q:'要求 AI 在給出答案前，必須「一步步寫出推理的過程」，這項超好用的提示技巧叫什麼？',
+    opts:['少樣本提示 (Few-shot)','思維鏈 (CoT)','資料去重 (Deduplication)','影像辨識 (CV)'], ans:1,
+    explain:'Chain-of-Thought（思維鏈）要求 AI 顯示推理過程，能大幅提升複雜問題的準確率，原理是強迫模型「想清楚再說」。' },
+  { id:13, cat:'prompt', q:'比思維鏈 (CoT) 更厲害，讓 AI 在腦中像畫樹枝一樣「思考多條不同的路線再做決定」，這叫什麼提示法？',
+    opts:['思想樹 (Tree of Thoughts / ToT)','隨機亂清','蘋果樹','記憶體清理'], ans:0,
+    explain:'Tree of Thoughts（思想樹）讓 AI 同時探索多條推理路徑，對需要規劃或多步驟邏輯的問題效果特別好。' },
+  { id:14, cat:'prompt', q:'告訴 AI 任務時，先給它 1 到 2 個「正確的範例」讓它照著學，這叫什麼提示技巧？',
+    opts:['黑它一頓','少樣本提示 (Few-shot Prompting)','不給提示 (Zero-shot)','重新開機'], ans:1,
+    explain:'Few-shot Prompting 提供少量示例，讓 AI 理解任務格式與期望輸出，比純文字描述更有效。' },
+  { id:15, cat:'prompt', q:'在提示 AI 時，特別告訴它「要用董事會的專業語氣」，這種給予特定方向引導的技巧叫做？',
+    opts:['亂槍打鳥','定向刺激提示 (Directional Stimulus)','格式限制','翻譯模式'], ans:1,
+    explain:'Directional Stimulus（定向刺激提示）透過指定語氣、風格或方向，引導 AI 產出符合特定場景的內容。' },
+  { id:16, cat:'prompt', q:'近年流行的 LCNC (低程式碼/無程式碼) 平台，主打的最大好處是什麼？',
+    opts:['電腦不用插電','不用寫一堆複雜的程式碼，用滑鼠點一點就能做 AI 系統','完全免費不用錢','不需要網路就能上網'], ans:1,
+    explain:'LCNC（Low-Code/No-Code）平台讓非工程師也能透過視覺化介面搭建 AI 應用，大幅降低技術門檻。' },
+  { id:17, cat:'prompt', q:'Google 推出了一款超級好用的「無程式碼 RAG 工具」，可以把很多 PDF 丟進去讓 AI 讀，它叫什麼名字？',
+    opts:['Google Maps','Google Translate','Google NotebookLM','Google Play'], ans:2,
+    explain:'Google NotebookLM 是一款基於 Gemini 的 RAG 工具，使用者可上傳文件，AI 會根據這些文件回答問題並提供引用。' },
+
+  // 資料與 AI 技術
+  { id:18, cat:'data', q:'日常生活中的「Excel 表格」因為有明確的行列格式，這屬於哪一種資料？',
+    opts:['非結構化資料','半結構化資料','結構化資料','雜訊資料'], ans:2,
+    explain:'結構化資料有固定的欄位格式，例如 Excel、資料庫表格，電腦可以直接讀取和運算。' },
+  { id:19, cat:'data', q:'企業的「手寫單據」或「法規 PDF 檔」因為沒有固定格式，電腦很難直接看懂，這稱為什麼資料？',
+    opts:['結構化資料','非結構化資料','完美資料','清洗後資料'], ans:1,
+    explain:'非結構化資料沒有預定義的格式，包括文字、圖片、影片、聲音等，需要 AI/NLP 技術才能有效處理。' },
+  { id:20, cat:'data', q:'財務部給了幾百筆碳權號碼，我們可以用 AI 的什麼技術瞬間抓出有沒有重複的號碼？',
+    opts:['資料去重 (Remove Duplicates)','翻譯成英文','轉成 PDF 檔','調整螢幕亮度'], ans:0,
+    explain:'資料去重（Deduplication）是資料清洗的基本步驟，可快速識別並移除重複記錄，確保碳權序號的唯一性。' },
+  { id:21, cat:'data', q:'把紙本的「台電電費單」拍照，AI 就能自動把上面的度數和金額抓出來變成 Excel，這是用了什麼技術？',
+    opts:['藍牙傳輸','電腦視覺 (CV) 與 OCR 文字辨識','3D 列印','GPS 定位'], ans:1,
+    explain:'電腦視覺（CV）用於識別圖片中的元素，OCR（光學文字辨識）則把圖片中的文字轉換成可編輯的數位文字。' },
+  { id:22, cat:'data', q:'為了讓 AI 模型看懂「公務車」和「外購電力」這種文字分類，把它們變成數字矩陣 [1,0] 和 [0,1]，這招叫做什麼？',
+    opts:['畫重點','加密碼','獨熱編碼 (One-Hot Encoding)','解壓縮'], ans:2,
+    explain:'One-Hot Encoding 把分類文字轉換成二進位向量，讓機器學習模型能夠處理類別型資料。' },
+  { id:23, cat:'data', q:'AI 能夠像「翻譯機」一樣，把財務部雜亂的報帳單，變成標準的 ISO 盤查分類，這主要依賴 AI 的什麼能力？',
+    opts:['計算能力','自然語言處理 (NLP) 分類能力','繪圖能力','搜尋能力'], ans:1,
+    explain:'NLP（自然語言處理）的文字分類功能可以理解帳單描述的語義，並自動歸類到 ISO 14064 的對應範疇。' },
+  { id:24, cat:'data', q:'整理碳盤查資料時，把供應商給的不同單位（例如磅、加侖）全部換算成統一的「公斤」，這個動作叫做？',
+    opts:['資料刪除','資料標準化 (Standardization)','資料加密','資料備份'], ans:1,
+    explain:'資料標準化確保不同來源的資料使用相同的量綱和格式，是碳盤查資料整合的必要步驟。' },
+  { id:25, cat:'data', q:'利用 AI 可以把枯燥的節能數據，一鍵變成好看的 PPT 簡報給老闆看，這展現了多模態 AI 的哪種能力？',
+    opts:['文本生成演示簡報 (Text-to-Presentation)','寫作能力','算數學能力','翻譯能力'], ans:0,
+    explain:'Text-to-Presentation 是多模態 AI 的應用之一，能根據結構化數據或文字描述，自動生成視覺化簡報。' },
+  { id:26, cat:'data', q:'當 AI 模型在學習時，我們需要給它已知且絕對正確的答案來核對，這個絕對正確的標準稱為什麼？',
+    opts:['隨機變數','基準真值 (Ground Truth)','幻覺','網頁原始碼'], ans:1,
+    explain:'Ground Truth（基準真值）是訓練和評估機器學習模型的標準答案，通常由人工標記產生。' },
+
+  // 碳盤查與碳排放
+  { id:27, cat:'carbon', q:'氣候變遷策略中，「減緩 (Mitigation)」最白話的意思是什麼？',
+    opts:['多蓋幾座水庫','買保險防範颱風','從源頭減少溫室氣體的排放','訓練員工游泳'], ans:2,
+    explain:'Mitigation（減緩）指的是減少溫室氣體排放的行動，例如使用再生能源、提高能源效率。另一策略 Adaptation（調適）則是適應已發生的氣候變化。' },
+  { id:28, cat:'carbon', q:'公司「自己買的公務車」所燃燒的汽油，在碳盤查中屬於哪一個範疇？',
+    opts:['範疇一 (直接排放)','範疇二 (間接排放)','範疇三 (其他間接排放)','範疇四'], ans:0,
+    explain:'範疇一是公司直接擁有或控制的排放源，包括公司車輛燃燒汽油、工廠鍋爐燃燒天然氣等。' },
+  { id:29, cat:'carbon', q:'公司每個月向「台電買來用的電」，在碳盤查中屬於哪一個範疇？',
+    opts:['範疇一 (直接排放)','範疇二 (間接排放)','範疇三 (其他間接排放)','不算在碳排內'], ans:1,
+    explain:'範疇二是外購能源（電力、熱、蒸汽）產生的間接排放，雖然排放發生在電廠，但因公司消費而產生。' },
+  { id:30, cat:'carbon', q:'員工「自己騎私人機車」來上班的碳排，因為機車不是公司的，這屬於哪一個範疇？',
+    opts:['範疇一 (直接排放)','範疇二 (間接排放)','範疇三 (其他間接排放)','公司零碳排'], ans:2,
+    explain:'範疇三涵蓋企業價值鏈上的間接排放，包括員工通勤、商務旅行、供應鏈、產品使用等。' },
+  { id:31, cat:'carbon', q:'國際上有一個倡議就像「體重計」，只要求企業透明公開自己的碳排現況，這個倡議的簡稱是？',
+    opts:['SBTi','CDP (碳揭露計畫)','ISO 9001','WTO'], ans:1,
+    explain:'CDP（Carbon Disclosure Project，碳揭露計畫）是全球最大的企業環境資訊揭露平台，每年收集數萬家企業的碳排放數據。' },
+  { id:32, cat:'carbon', q:'國際上有一個倡議就像「營養師」，會要求企業訂定符合 1.5°C 升溫限制的科學減碳計畫，它的簡稱是？',
+    opts:['CDP','SBTi (科學基礎減量目標)','WHO','USB'], ans:1,
+    explain:'SBTi（Science Based Targets initiative）要求企業減碳目標必須符合《巴黎協定》的 1.5°C 路徑，有科學依據，而非隨意設定。' },
+  { id:33, cat:'carbon', q:'依照 SBTi 的規定，企業可以完全不減碳，只靠「花錢買外部碳權」來達成目標嗎？',
+    opts:['可以，有錢就好','可以，但只能買歐盟的碳權','絕對不行，這是漂綠行為','法律沒有規定'], ans:2,
+    explain:'SBTi 要求企業必須進行「實質減排」，碳抵換（買碳權）只能用於抵消剩餘難以減少的排放，不能取代真正的減碳行動。' },
+  { id:34, cat:'carbon', q:'AI 有時候會為了討好人類而給出錯誤承諾，因此企業對外發布重要文件時，最後一關一定要由誰來把關？',
+    opts:['另一個 AI','人類 (Human-in-the-loop)','外星人','電腦病毒'], ans:1,
+    explain:'Human-in-the-loop（人類在迴路中）確保 AI 的最終輸出由人類審查，避免因 AI 幻覺或偏差導致錯誤決策。' },
+  { id:35, cat:'carbon', q:'政府或機構核發給你，證明你減了多少碳的「憑證商品」，叫做什麼？',
+    opts:['碳稅','碳費','減量額度 (Credit) / 碳權','折價券'], ans:2,
+    explain:'碳權（Carbon Credit）是由認可機構核發的減碳憑證，代表減少或移除了一噸 CO₂ 當量的排放。' },
+  { id:36, cat:'carbon', q:'企業為了在內部評估買哪台機器比較划算，自己設定的一個「虛擬碳排價格」稱為什麼？',
+    opts:['歐盟碳價','企業內部碳定價 (ICP)','台電電費','國際運費'], ans:1,
+    explain:'ICP（Internal Carbon Price，企業內部碳定價）讓企業在投資決策時將碳成本納入計算，提前為碳定價政策做準備。' },
+  { id:37, cat:'carbon', q:'在申報碳抵換時，同一張碳權的序號絕對不能被申報兩次，這種作弊行為叫做？',
+    opts:['資源回收','買一送一','重複計算 (Double Counting)','碳捕捉'], ans:2,
+    explain:'Double Counting（重複計算）指同一筆減碳量被多次申報，是碳交易市場的主要作弊手段，各國碳交易所都有機制防止此類行為。' },
+  { id:38, cat:'carbon', q:'專門用來計算「單一產品（例如一個滑鼠）」從頭到尾製造過程產生多少碳排的規範是？',
+    opts:['ISO 14067 (產品碳足跡)','勞基法','交通法規','ISO 9001'], ans:0,
+    explain:'ISO 14067 是全球通用的產品碳足跡計算標準，涵蓋從原料取得到製造、運輸的完整生命週期。' },
+  { id:39, cat:'carbon', q:'為什麼各部門不能自己算自己的碳排，一定要把資料統一整理好？因為要打破什麼問題？',
+    opts:['玻璃心','資料孤島 (Data Silos)','辦公室隔間','網路連線中斷'], ans:1,
+    explain:'Data Silos（資料孤島）指各部門的數據系統互不相通，導致無法整合分析。碳盤查需要跨部門數據，必須打通孤島。' },
+  { id:40, cat:'carbon', q:'減碳金字塔的順序中，企業要做的「第一步」絕對是什麼？',
+    opts:['趕快花錢買碳權','把工廠關掉','盤查量化（先算清楚自己排了多少碳）','換老闆'], ans:2,
+    explain:'沒有盤查，就無法設定目標、追蹤進度。碳管理的第一步永遠是「量化現況」，才能知道從哪裡下手減碳。' },
+  { id:41, cat:'carbon', q:'SBTi 有專門給中小企業的「SME 快速通道」，其中 SME 是指什麼？',
+    opts:['超級大企業','政府機關','中小企業','學校單位'], ans:2,
+    explain:'SME（Small and Medium-sized Enterprises）即中小企業。SBTi 的 SME 通道簡化了目標設定流程，降低中小企業的參與門檻。' },
+  { id:42, cat:'carbon', q:'大漢豆腐自稱自己「完全不用買外部碳權，靠自己節能減碳達成目標」，這符合 SBTi 的哪一項精神？',
+    opts:['鼓勵漂綠','實質減排 (深度去碳)','投資股票','增加碳排'], ans:1,
+    explain:'SBTi 強調的是實質減排，即企業必須實際降低自身排放，而非購買碳抵換來「假裝」達標。這正是深度去碳的精神。' },
+
+  // TCFD / CBAM
+  { id:43, cat:'tcfd', q:'TCFD 框架中，因為淹水、颱風而導致工廠損壞，這屬於什麼風險？',
+    opts:['實體風險','轉型風險','匯率風險','網路安全風險'], ans:0,
+    explain:'TCFD 將氣候風險分為「實體風險」（極端天氣、海平面上升等物理損害）和「轉型風險」（政策、技術、市場變化）。' },
+  { id:44, cat:'tcfd', q:'TCFD 框架中，因為政府「修改碳費法規」導致公司成本大增，這屬於什麼風險？',
+    opts:['實體風險','轉型風險','淹水風險','地震風險'], ans:1,
+    explain:'轉型風險源自於向低碳經濟轉型的過程，包括政策法規變化、技術革新、消費者偏好改變等帶來的財務衝擊。' },
+  { id:45, cat:'tcfd', q:'歐盟實施 CBAM (碳邊境調整機制) 向進口商品收費，主要是為了防止什麼事情發生？',
+    opts:['碳洩漏（高碳排工廠外移到沒法規的國家）','歐盟人口減少','產品太便宜','歐洲天氣變冷'], ans:0,
+    explain:'CBAM（Carbon Border Adjustment Mechanism）對進口商品課碳費，防止企業因逃避歐盟碳費而將生產移往法規寬鬆的國家。' },
+  { id:46, cat:'tcfd', q:'賣東西到歐洲，如果你提不出自己產品的碳排數據，歐盟 CBAM 會怎麼懲罰你？',
+    opts:['把你抓去關','沒收你的商品','用極高、極貴的「歐盟預設值」來算你的碳排','這次免費放行'], ans:2,
+    explain:'若進口商無法提供產品碳排數據，CBAM 會使用歐盟設定的「預設排放值」計算，這個值通常遠高於實際排放量，等同懲罰。' },
+
+  // ISO 盤查 / 查驗確證
+  { id:47, cat:'iso', q:'ISO 14064-1 規定，企業的「報告邊界」必須把重大間接排放算進去，所以它一定會大於等於什麼邊界？',
+    opts:['國家邊界','組織邊界','太陽系邊界','產品邊界'], ans:1,
+    explain:'ISO 14064-1 的組織邊界定義了哪些實體和設施屬於報告範圍；報告邊界在此基礎上再加入重大間接排放（範疇三），所以一定大於等於組織邊界。' },
+  { id:48, cat:'iso', q:'如果你不小心把老闆私人去玩的機票，算成了公司的公務車油錢，在 ISO 盤查時會發生什麼事？',
+    opts:['邊界認定錯誤，會被查驗機構退件','老闆會很開心','會得到政府獎金','碳排會變成零'], ans:0,
+    explain:'ISO 盤查要求嚴格的邊界設定，私人費用不得混入企業碳排清冊。查驗機構會核查數據一致性，錯誤的邊界會導致查驗失敗。' },
+  { id:49, cat:'iso', q:'對於過去發生的「歷史盤查清冊」，請第三方來檢查有沒有算錯，這叫做？',
+    opts:['算命','預測','查證 (Verification)','確證 (Validation)'], ans:2,
+    explain:'Verification（查證）是對已發生事實的核查，檢查過去的碳盤查數據是否正確可靠。' },
+  { id:50, cat:'iso', q:'對於「未來即將發生」的減碳專案，請專家來評估你的計畫合不合理，這叫做？',
+    opts:['算命','預測','查證','確證 (Validation)'], ans:3,
+    explain:'Validation（確證）是對未來計畫的合理性評估，專家審查減碳方法論和預測是否符合標準。' },
+];
+
+const CAT_LABELS = { ai:'AI 概念', prompt:'Prompt Engineering', data:'資料與 AI 技術', carbon:'碳盤查與碳排放', tcfd:'TCFD / CBAM', iso:'ISO 盤查 / 查驗' };
+const CAT_CLASSES = { ai:'tag-ai', prompt:'tag-prompt', data:'tag-data', carbon:'tag-carbon', tcfd:'tag-tcfd', iso:'tag-iso' };
+
+let state = {
+  currentCat: 'all',
+  queue: [],
+  idx: 0,
+  answered: {}, // id -> {selected, correct}
+  wrong: new Set(),
+  unseen: new Set(ALL_QUESTIONS.map(q=>q.id)),
+  stats: { correct: 0, streak: 0, total: 0 }
+};
+
+function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+
+function getPool() {
+  let base = state.currentCat === 'all' ? ALL_QUESTIONS : ALL_QUESTIONS.filter(q => q.cat === state.currentCat);
+  const mode = document.getElementById('mode-select').value;
+  if (mode === 'wrong') base = base.filter(q => state.wrong.has(q.id));
+  if (mode === 'unseen') base = base.filter(q => state.unseen.has(q.id));
+  return base;
+}
+
+function startQuiz() {
+  const pool = getPool();
+  if (!pool.length) { alert('沒有符合條件的題目！請切換模式或分類。'); return; }
+  state.queue = shuffle(pool);
+  state.idx = 0;
+  document.getElementById('quiz-screen').style.display = 'block';
+  document.getElementById('result-screen').style.display = 'none';
+  renderQ();
+}
+
+function filterCat(cat) {
+  state.currentCat = cat;
+  document.querySelectorAll('.sidebar-btn[data-cat]').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+  startQuiz();
+}
+
+function renderQ() {
+  if (state.idx >= state.queue.length) { showResult(); return; }
+  const q = state.queue[state.idx];
+  const shuffledOpts = q.opts.map((o, i) => ({ text: o, origIdx: i })).sort(() => Math.random() - 0.5);
+
+  document.getElementById('q-num').textContent = `題目 ${state.idx + 1}`;
+  document.getElementById('q-progress').textContent = `${state.idx + 1} / ${state.queue.length}`;
+  document.getElementById('q-text').textContent = q.q;
+
+  const tag = document.getElementById('q-tag');
+  tag.textContent = CAT_LABELS[q.cat];
+  tag.className = 'q-tag ' + CAT_CLASSES[q.cat];
+
+  const bar = document.getElementById('progress-bar');
+  bar.style.width = ((state.idx / state.queue.length) * 100) + '%';
+
+  const opts = document.getElementById('options');
+  opts.innerHTML = '';
+  const letters = ['A','B','C','D'];
+  shuffledOpts.forEach((o, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.innerHTML = `<span class="option-letter">${letters[i]}</span><span>${o.text}</span>`;
+    btn.onclick = () => selectAnswer(o.origIdx, shuffledOpts, q);
+    opts.appendChild(btn);
+  });
+
+  const fb = document.getElementById('feedback');
+  fb.style.display = 'none';
+  fb.className = 'feedback';
+
+  document.getElementById('next-btn').style.display = 'none';
+  document.getElementById('prev-btn').disabled = state.idx === 0;
+  document.getElementById('skip-btn').style.display = 'inline';
+}
+
+function selectAnswer(selectedOrig, shuffledOpts, q) {
+  const isCorrect = selectedOrig === q.ans;
+  const optBtns = document.querySelectorAll('.option-btn');
+
+  shuffledOpts.forEach((o, i) => {
+    optBtns[i].disabled = true;
+    if (o.origIdx === q.ans) optBtns[i].classList.add('correct');
+    else if (o.origIdx === selectedOrig && !isCorrect) optBtns[i].classList.add('wrong');
+    else optBtns[i].classList.add('reveal');
+  });
+
+  // stats
+  if (!state.answered[q.id]) {
+    state.stats.total++;
+    if (isCorrect) {
+      state.stats.correct++;
+      state.stats.streak++;
+      state.wrong.delete(q.id);
+    } else {
+      state.stats.streak = 0;
+      state.wrong.add(q.id);
+    }
+    state.unseen.delete(q.id);
+    state.answered[q.id] = { selected: selectedOrig, correct: isCorrect };
+    updateStats();
+  }
+
+  const fb = document.getElementById('feedback');
+  fb.style.display = 'block';
+  if (isCorrect) {
+    fb.className = 'feedback correct';
+    document.getElementById('fb-title').textContent = '✓ 答對了！';
+  } else {
+    fb.className = 'feedback wrong';
+    document.getElementById('fb-title').textContent = '✗ 答錯了';
+  }
+  document.getElementById('fb-body').textContent = q.explain;
+
+  document.getElementById('next-btn').style.display = 'inline-flex';
+  document.getElementById('skip-btn').style.display = 'none';
+}
+
+function goNext() {
+  state.idx++;
+  renderQ();
+}
+
+function goPrev() {
+  if (state.idx > 0) { state.idx--; renderQ(); }
+}
+
+function skipQ() {
+  state.idx++;
+  if (state.idx >= state.queue.length) { showResult(); return; }
+  renderQ();
+}
+
+function updateStats() {
+  document.getElementById('stat-correct').textContent = state.stats.correct;
+  document.getElementById('stat-streak').textContent = state.stats.streak;
+  document.getElementById('stat-total').textContent = state.stats.total;
+}
+
+function showResult() {
+  document.getElementById('quiz-screen').style.display = 'none';
+  const rs = document.getElementById('result-screen');
+  rs.style.display = 'flex';
+  const total = state.queue.length;
+  const correct = state.queue.filter(q => state.answered[q.id]?.correct).length;
+  const pct = Math.round((correct / total) * 100);
+  document.getElementById('res-score').textContent = pct + '%';
+  const titles = [[80,'🏆 太強了！','繼續保持這個狀態'],[60,'👍 不錯！','再衝一輪鞏固記憶'],[0,'💪 繼續加油！','錯的題目再刷一次就會了']];
+  const [,t,s] = titles.find(([min]) => pct >= min);
+  document.getElementById('res-title').textContent = t;
+  document.getElementById('res-sub').textContent = `答對 ${correct} / ${total} 題 · ${s}`;
+}
+
+function reviewWrong() {
+  document.getElementById('mode-select').value = 'wrong';
+  startQuiz();
+}
+
+// init sidebar counts
+function initCounts() {
+  document.getElementById('cnt-all').textContent = ALL_QUESTIONS.length;
+  ['ai','prompt','data','carbon','tcfd','iso'].forEach(cat => {
+    const el = document.getElementById('cnt-' + cat);
+    if (el) el.textContent = ALL_QUESTIONS.filter(q => q.cat === cat).length;
+  });
+}
+
+initCounts();
+startQuiz();
+</script>
+</body>
+</html>
